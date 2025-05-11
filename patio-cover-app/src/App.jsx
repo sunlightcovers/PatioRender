@@ -235,6 +235,48 @@ function App() {
     setIsDragging(false);
   };
 
+
+
+  const handleTouchStart = (e) => {
+  if (zoom <= 1 && backgroundZoom <= 1) return;
+  setIsDragging(true);
+  const touch = e.touches[0];
+  setDragStart({ x: touch.clientX - pan.x, y: touch.clientY - pan.y });
+};
+
+const handleTouchMove = (e) => {
+  if (!isDragging) return;
+  e.preventDefault(); // Prevent default scrolling behavior
+  const touch = e.touches[0];
+  const newPanX = touch.clientX - dragStart.x;
+  const newPanY = touch.clientY - dragStart.y;
+
+  const container = imageContainerRef.current;
+  if (container) {
+    const img = container.querySelector('img');
+    if (!img) return;
+    const containerWidth = container.offsetWidth;
+    const containerHeight = container.offsetHeight;
+    const imgWidth = img.naturalWidth * zoom * backgroundZoom;
+    const imgHeight = img.naturalHeight * zoom * backgroundZoom;
+
+    const maxPanX = Math.max(0, (imgWidth - containerWidth) / 2 / (zoom * backgroundZoom));
+    const maxPanY = Math.max(0, (imgHeight - containerHeight) / 2 / (zoom * backgroundZoom));
+
+    const boundedPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
+    const boundedPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
+
+    setPan({ x: boundedPanX, y: boundedPanY });
+  }
+};
+
+const handleTouchEnd = () => {
+  setIsDragging(false);
+};
+
+
+
+
   useEffect(() => {
     if (step === 'capture') {
       startCamera();
@@ -279,17 +321,22 @@ function App() {
         <div className="preview-section">
           <h2>Step 2: Place the Patio Cover</h2>
           <div className="scene-container" ref={imageContainerRef}>
-            <div
-              className="image-wrapper"
-              style={{
-                transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-                transformOrigin: 'center center',
-              }}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-            >
+              <div
+                className="image-wrapper"
+                style={{
+                  transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+                  transformOrigin: 'center center',
+                  touchAction: 'none', // Prevent default touch behaviors like pinch-zoom
+                }}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchEnd}
+              >
               <img
                 src={photo}
                 alt="House"
