@@ -1,24 +1,43 @@
 .app {
-  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  overscroll-behavior: none; /* Prevent iOS overscroll */
 }
 
 .scene-container {
   position: relative;
   width: 100%;
   max-width: 800px;
-  height: 300px; /* Fixed height for image/canvas, suitable for iPhone SE */
   margin: 0 auto;
+  height: 500px;
   overflow: hidden;
+  border: 1px solid #ccc;
+  touch-action: none; /* Ensure no default touch behaviors */
 }
 
 .image-wrapper {
   position: relative;
   width: 100%;
   height: 100%;
+  user-select: none; /* Prevent text selection during panning */
+  -webkit-user-select: none; /* Safari */
+}
+
+@media (max-width: 768px) {
+  .scene-container {
+    height: 50vh; /* Adjust for mobile */
+    max-height: 400px;
+  }
+  .image-wrapper {
+    width: 100%;
+    height: 100%;
+  }
+  .scrollable-controls {
+    max-height: 50vh;
+    overflow-y: auto;
+  }
 }
 
 .background-photo {
