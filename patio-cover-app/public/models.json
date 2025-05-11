@@ -1,0 +1,6 @@
+{
+  "models": [
+    { "value": "/models/patio-cover.glb", "label": "Patio Cover 1" },
+    { "value": "/models/gazebo_1.glb", "label": "Gazebo" }
+  ]
+}
