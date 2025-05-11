@@ -89,19 +89,37 @@ function App() {
   }, []);
 
   // Start the camera
-  const startCamera = async () => {
+const startCamera = async () => {
+  try {
+    // Request the rear-facing camera by setting facingMode to "environment"
+    const constraints = {
+      video: {
+        facingMode: "environment" // Prefer rear-facing camera
+      }
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    streamRef.current = stream;
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play();
+    }
+  } catch (err) {
+    console.error('Error accessing rear camera:', err);
+    // Fallback to any available camera if rear camera is unavailable
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const fallbackConstraints = { video: true };
+      const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
       }
-    } catch (err) {
-      console.error('Error accessing camera:', err);
+    } catch (fallbackErr) {
+      console.error('Error accessing any camera:', fallbackErr);
       alert('Could not access the camera. Please upload a photo instead.');
     }
-  };
+  }
+};
 
   // Capture photo from camera
   const capturePhoto = () => {
@@ -371,7 +389,7 @@ function App() {
               />
             </label>
             <label>
-              Scale:
+              Scale:git
               <input
                 type="range"
                 min="0.5"
