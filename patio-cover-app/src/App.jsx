@@ -36,7 +36,7 @@ function PatioCover({ modelPath, position, rotationX, rotationY, scale }) {
     return (
       <mesh position={position} rotation={[rotationX, rotationY, 0]} scale={scale}>
         <boxGeometry args={[2, 0.2, 2]} />
-        <meshStandardMaterial color="gray" /> {/* Default color for placeholder */}
+        <meshStandardMaterial color="gray" />
       </mesh>
     );
   }
@@ -314,298 +314,309 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="controls">
-            <h3>Adjust Photo View</h3>
-            <label>
-              Zoom (Image + Model):
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="1"
-                  max="3"
-                  step="0.1"
-                  value={zoom}
-                  onChange={(e) => {
-                    setZoom(parseFloat(e.target.value));
-                    setPan({ x: 0, y: 0 });
-                  }}
-                  className="custom-slider"
-                  aria-label="Adjust zoom for image and model"
-                />
-                <input
-                  type="number"
-                  min="1"
-                  max="3"
-                  step="0.1"
-                  value={zoom}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value >= 1 && value <= 3) {
-                      setZoom(value);
+          {/* Scrollable controls container */}
+          <div className="scrollable-controls">
+            <div className="controls">
+              <h3>Adjust Photo View</h3>
+              <label>
+                Zoom (Image + Model):
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={zoom}
+                    onChange={(e) => {
+                      setZoom(parseFloat(e.target.value));
                       setPan({ x: 0, y: 0 });
-                    }
-                  }}
-                  className="number-input"
-                  aria-label="Enter zoom value for image and model"
-                />
-              </div>
-            </label>
-            <label>
-              Background Zoom (Image Only):
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="1"
-                  max="3"
-                  step="0.1"
-                  value={backgroundZoom}
-                  onChange={(e) => {
-                    setBackgroundZoom(parseFloat(e.target.value));
-                    setPan({ x: 0, y: 0 });
-                  }}
-                  className="custom-slider"
-                  aria-label="Adjust zoom for background image"
-                />
-                <input
-                  type="number"
-                  min="1"
-                  max="3"
-                  step="0.1"
-                  value={backgroundZoom}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value >= 1 && value <= 3) {
-                      setBackgroundZoom(value);
+                    }}
+                    className="custom-slider"
+                    aria-label="Adjust zoom for image and model"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={zoom}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 1 && value <= 3) {
+                        setZoom(value);
+                        setPan({ x: 0, y: 0 });
+                      }
+                    }}
+                    className="number-input"
+                    aria-label="Enter zoom value for image and model"
+                    inputMode="decimal"
+                  />
+                </div>
+              </label>
+              <label>
+                Background Zoom (Image Only):
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={backgroundZoom}
+                    onChange={(e) => {
+                      setBackgroundZoom(parseFloat(e.target.value));
                       setPan({ x: 0, y: 0 });
+                    }}
+                    className="custom-slider"
+                    aria-label="Adjust zoom for background image"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={backgroundZoom}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 1 && value <= 3) {
+                        setBackgroundZoom(value);
+                        setPan({ x: 0, y: 0 });
+                      }
+                    }}
+                    className="number-input"
+                    aria-label="Enter zoom value for background image"
+                    inputMode="decimal"
+                  />
+                </div>
+              </label>
+              <h3>Adjust Patio Cover</h3>
+              <label>
+                Select Model:
+                <select
+                  value={selectedModel || ''}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  aria-label="Select a patio cover model"
+                >
+                  {modelOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                X Position:
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min="-10"
+                    max="10"
+                    step="0.1"
+                    value={patioPosition[0]}
+                    onChange={(e) =>
+                      setPatioPosition([
+                        parseFloat(e.target.value),
+                        patioPosition[1],
+                        patioPosition[2],
+                      ])
                     }
-                  }}
-                  className="number-input"
-                  aria-label="Enter zoom value for background image"
-                />
-              </div>
-            </label>
-            <h3>Adjust Patio Cover</h3>
-            <label>
-              Select Model:
-              <select
-                value={selectedModel || ''}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                aria-label="Select a patio cover model"
+                    className="custom-slider"
+                    aria-label="Adjust X position of the patio cover"
+                  />
+                  <input
+                    type="number"
+                    min="-10"
+                    max="10"
+                    step="0.1"
+                    value={patioPosition[0]}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= -10 && value <= 10) {
+                        setPatioPosition([value, patioPosition[1], patioPosition[2]]);
+                      }
+                    }}
+                    className="number-input"
+                    aria-label="Enter X position of the patio cover"
+                    inputMode="decimal"
+                  />
+                </div>
+              </label>
+              <label>
+                Y Position:
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min="-10"
+                    max="10"
+                    step="0.1"
+                    value={patioPosition[1]}
+                    onChange={(e) =>
+                      setPatioPosition([
+                        patioPosition[0],
+                        parseFloat(e.target.value),
+                        patioPosition[2],
+                      ])
+                    }
+                    className="custom-slider"
+                    aria-label="Adjust Y position of the patio cover"
+                  />
+                  <input
+                    type="number"
+                    min="-10"
+                    max="10"
+                    step="0.1"
+                    value={patioPosition[1]}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= -10 && value <= 10) {
+                        setPatioPosition([patioPosition[0], value, patioPosition[2]]);
+                      }
+                    }}
+                    className="number-input"
+                    aria-label="Enter Y position of the patio cover"
+                    inputMode="decimal"
+                  />
+                </div>
+              </label>
+              <label>
+                Z Position (Depth):
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min="-5"
+                    max="5"
+                    step="0.1"
+                    value={patioPosition[2]}
+                    onChange={(e) =>
+                      setPatioPosition([
+                        patioPosition[0],
+                        patioPosition[1],
+                        parseFloat(e.target.value),
+                      ])
+                    }
+                    className="custom-slider"
+                    aria-label="Adjust Z position of the patio cover"
+                  />
+                  <input
+                    type="number"
+                    min="-5"
+                    max="5"
+                    step="0.1"
+                    value={patioPosition[2]}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= -5 && value <= 5) {
+                        setPatioPosition([patioPosition[0], patioPosition[1], value]);
+                      }
+                    }}
+                    className="number-input"
+                    aria-label="Enter Z position of the patio cover"
+                    inputMode="decimal"
+                  />
+                </div>
+              </label>
+              <label>
+                Rotate X:
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min="0"
+                    max="6.28"
+                    step="0.1"
+                    value={rotationX}
+                    onChange={(e) => setRotationX(parseFloat(e.target.value))}
+                    className="custom-slider"
+                    aria-label="Adjust X rotation of the patio cover"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="6.28"
+                    step="0.1"
+                    value={rotationX}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 0 && value <= 6.28) {
+                        setRotationX(value);
+                      }
+                    }}
+                    className="number-input"
+                    aria-label="Enter X rotation of the patio cover"
+                    inputMode="decimal"
+                  />
+                </div>
+              </label>
+              <label>
+                Rotate Y:
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min="0"
+                    max="6.28"
+                    step="0.1"
+                    value={rotationY}
+                    onChange={(e) => setRotationY(parseFloat(e.target.value))}
+                    className="custom-slider"
+                    aria-label="Adjust Y rotation of the patio cover"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="6.28"
+                    step="0.1"
+                    value={rotationY}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 0 && value <= 6.28) {
+                        setRotationY(value);
+                      }
+                    }}
+                    className="number-input"
+                    aria-label="Enter Y rotation of the patio cover"
+                    inputMode="decimal"
+                  />
+                </div>
+              </label>
+              <label>
+                Scale:
+                <div className="slider-container">
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    value={scale}
+                    onChange={(e) => setScale(parseFloat(e.target.value))}
+                    className="custom-slider"
+                    aria-label="Adjust scale of the patio cover"
+                  />
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    value={scale}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 0.5 && value <= 2) {
+                        setScale(value);
+                      }
+                    }}
+                    className="number-input"
+                    aria-label="Enter scale of the patio cover"
+                    inputMode="decimal"
+                  />
+                </div>
+              </label>
+              <button
+                onClick={() => setPatioPosition([0, 0, 0])}
+                aria-label="Reset patio cover position"
               >
-                {modelOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              X Position:
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="-10"
-                  max="10"
-                  step="0.1"
-                  value={patioPosition[0]}
-                  onChange={(e) =>
-                    setPatioPosition([
-                      parseFloat(e.target.value),
-                      patioPosition[1],
-                      patioPosition[2],
-                    ])
-                  }
-                  className="custom-slider"
-                  aria-label="Adjust X position of the patio cover"
-                />
-                <input
-                  type="number"
-                  min="-10"
-                  max="10"
-                  step="0.1"
-                  value={patioPosition[0]}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value >= -10 && value <= 10) {
-                      setPatioPosition([value, patioPosition[1], patioPosition[2]]);
-                    }
-                  }}
-                  className="number-input"
-                  aria-label="Enter X position of the patio cover"
-                />
-              </div>
-            </label>
-            <label>
-              Y Position:
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="-10"
-                  max="10"
-                  step="0.1"
-                  value={patioPosition[1]}
-                  onChange={(e) =>
-                    setPatioPosition([
-                      patioPosition[0],
-                      parseFloat(e.target.value),
-                      patioPosition[2],
-                    ])
-                  }
-                  className="custom-slider"
-                  aria-label="Adjust Y position of the patio cover"
-                />
-                <input
-                  type="number"
-                  min="-10"
-                  max="10"
-                  step="0.1"
-                  value={patioPosition[1]}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value >= -10 && value <= 10) {
-                      setPatioPosition([patioPosition[0], value, patioPosition[2]]);
-                    }
-                  }}
-                  className="number-input"
-                  aria-label="Enter Y position of the patio cover"
-                />
-              </div>
-            </label>
-            <label>
-              Z Position (Depth):
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="-5"
-                  max="5"
-                  step="0.1"
-                  value={patioPosition[2]}
-                  onChange={(e) =>
-                    setPatioPosition([
-                      patioPosition[0],
-                      patioPosition[1],
-                      parseFloat(e.target.value),
-                    ])
-                  }
-                  className="custom-slider"
-                  aria-label="Adjust Z position of the patio cover"
-                />
-                <input
-                  type="number"
-                  min="-5"
-                  max="5"
-                  step="0.1"
-                  value={patioPosition[2]}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value >= -5 && value <= 5) {
-                      setPatioPosition([patioPosition[0], patioPosition[1], value]);
-                    }
-                  }}
-                  className="number-input"
-                  aria-label="Enter Z position of the patio cover"
-                />
-              </div>
-            </label>
-            <label>
-              Rotate X:
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="0"
-                  max="6.28"
-                  step="0.1"
-                  value={rotationX}
-                  onChange={(e) => setRotationX(parseFloat(e.target.value))}
-                  className="custom-slider"
-                  aria-label="Adjust X rotation of the patio cover"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  max="6.28"
-                  step="0.1"
-                  value={rotationX}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value >= 0 && value <= 6.28) {
-                      setRotationX(value);
-                    }
-                  }}
-                  className="number-input"
-                  aria-label="Enter X rotation of the patio cover"
-                />
-              </div>
-            </label>
-            <label>
-              Rotate Y:
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="0"
-                  max="6.28"
-                  step="0.1"
-                  value={rotationY}
-                  onChange={(e) => setRotationY(parseFloat(e.target.value))}
-                  className="custom-slider"
-                  aria-label="Adjust Y rotation of the patio cover"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  max="6.28"
-                  step="0.1"
-                  value={rotationY}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value >= 0 && value <= 6.28) {
-                      setRotationY(value);
-                    }
-                  }}
-                  className="number-input"
-                  aria-label="Enter Y rotation of the patio cover"
-                />
-              </div>
-            </label>
-            <label>
-              Scale:
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2"
-                  step="0.1"
-                  value={scale}
-                  onChange={(e) => setScale(parseFloat(e.target.value))}
-                  className="custom-slider"
-                  aria-label="Adjust scale of the patio cover"
-                />
-                <input
-                  type="number"
-                  min="0.5"
-                  max="2"
-                  step="0.1"
-                  value={scale}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (!isNaN(value) && value >= 0.5 && value <= 2) {
-                      setScale(value);
-                    }
-                  }}
-                  className="number-input"
-                  aria-label="Enter scale of the patio cover"
-                />
-              </div>
-            </label>
-            <button
-              onClick={() => setPatioPosition([0, 0, 0])}
-              aria-label="Reset patio cover position"
-            >
-              Reset Position
-            </button>
-            <button onClick={exportDesign} aria-label="Export patio cover design as image">
-              Export Design
-            </button>
+                Reset Position
+              </button>
+              <button onClick={exportDesign} aria-label="Export patio cover design as image">
+                Export Design
+              </button>
+            </div>
           </div>
         </div>
       )}
