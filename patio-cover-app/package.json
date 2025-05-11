@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "serve dist -s"
+
+  },
+  "engines":{
+    "node" : "22.15.0"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.7",
