@@ -1,19 +1,28 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
+import EXIF from 'exif-js';
 import './App.css';
 
-function PatioCover({ modelPath, position, rotationX, rotationY, scale, color }) {
+function PatioCover({ modelPath, position, rotationX, rotationY, scale }) {
   const [model, setModel] = useState(null);
+  const modelCache = useRef(new Map());
 
   useEffect(() => {
+    if (modelCache.current.has(modelPath)) {
+      setModel(modelCache.current.get(modelPath));
+      return;
+    }
+
     const loader = new GLTFLoader();
     loader.load(
       modelPath,
       (gltf) => {
-        setModel(gltf.scene);
+        const scene = gltf.scene;
+        modelCache.current.set(modelPath, scene);
+        setModel(scene);
       },
       undefined,
       (error) => {
@@ -27,7 +36,7 @@ function PatioCover({ modelPath, position, rotationX, rotationY, scale, color })
     return (
       <mesh position={position} rotation={[rotationX, rotationY, 0]} scale={scale}>
         <boxGeometry args={[2, 0.2, 2]} />
-        <meshStandardMaterial color={color} />
+        <meshStandardMaterial color="gray" /> {/* Default color for placeholder */}
       </mesh>
     );
   }
@@ -38,31 +47,41 @@ function PatioCover({ modelPath, position, rotationX, rotationY, scale, color })
       position={position}
       rotation={[rotationX, rotationY, 0]}
       scale={scale}
-    >
-      <meshStandardMaterial color={color} />
-    </primitive>
+    />
   );
 }
 
 function App() {
   const [photo, setPhoto] = useState(null);
-  const [step, setStep] = useState('capture'); // 'capture', 'preview'
-  const [patioPosition, setPatioPosition] = useState([0, 0, 0]); // X, Y, Z control
-  const [rotationX, setRotationX] = useState(Math.PI); // Default to π (centered)
-  const [rotationY, setRotationY] = useState(Math.PI); // Default to π (centered)
+  const [step, setStep] = useState('capture');
+  const [patioPosition, setPatioPosition] = useState([0, 0, 0]);
+  const [rotationX, setRotationX] = useState(Math.PI);
+  const [rotationY, setRotationY] = useState(Math.PI);
   const [scale, setScale] = useState(1);
-  const [color, setColor] = useState('brown');
   const [modelOptions, setModelOptions] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
-  const [zoom, setZoom] = useState(1); // Zoom for both image and model
-  const [backgroundZoom, setBackgroundZoom] = useState(1); // Zoom for background only
-  const [pan, setPan] = useState({ x: 0, y: 0 }); // Pan offsets
+  const [zoom, setZoom] = useState(1);
+  const [backgroundZoom, setBackgroundZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageRotation, setImageRotation] = useState(0);
   const canvasRef = useRef();
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const imageContainerRef = useRef(null);
+
+  // Memoized props for PatioCover
+  const patioProps = useMemo(
+    () => ({
+      modelPath: selectedModel,
+      position: patioPosition,
+      rotationX,
+      rotationY,
+      scale,
+    }),
+    [selectedModel, patioPosition, rotationX, rotationY, scale]
+  );
 
   // Fetch the list of models
   useEffect(() => {
@@ -82,44 +101,45 @@ function App() {
       })
       .catch((error) => {
         console.error('Error loading models.json:', error.message);
-        alert(`Failed to load the model list: ${error.message}. Using a placeholder model.`);
-        setModelOptions([{ value: '', label: 'Default Model (Placeholder)' }]);
-        setSelectedModel('');
+        alert(`Failed to load the model list: ${error.message}. Using a default model.`);
+        setModelOptions([{ value: '/default-model.gltf', label: 'Default Model' }]);
+        setSelectedModel('/default-model.gltf');
       });
   }, []);
 
   // Start the camera
-const startCamera = async () => {
-  try {
-    // Request the rear-facing camera by setting facingMode to "environment"
-    const constraints = {
-      video: {
-        facingMode: "environment" // Prefer rear-facing camera
-      }
-    };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    streamRef.current = stream;
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.play();
-    }
-  } catch (err) {
-    console.error('Error accessing rear camera:', err);
-    // Fallback to any available camera if rear camera is unavailable
+  const startCamera = async () => {
     try {
-      const fallbackConstraints = { video: true };
-      const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+      const constraints = {
+        video: {
+          facingMode: 'environment',
+        },
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
       }
-    } catch (fallbackErr) {
-      console.error('Error accessing any camera:', fallbackErr);
-      alert('Could not access the camera. Please upload a photo instead.');
+    } catch (err) {
+      console.error('Error accessing rear camera:', err);
+      try {
+        const fallbackConstraints = { video: true };
+        const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+      } catch (fallbackErr) {
+        console.error('Error accessing any camera:', fallbackErr);
+        alert(
+          'Could not access the camera. Please upload a photo instead or check your device permissions.'
+        );
+        setStep('capture');
+      }
     }
-  }
-};
+  };
 
   // Capture photo from camera
   const capturePhoto = () => {
@@ -135,32 +155,54 @@ const startCamera = async () => {
     setPhoto(photoData);
     setStep('preview');
 
-    // Stop the camera
-    streamRef.current.getTracks().forEach((track) => track.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+    }
   };
 
-  // Handle file upload
+  // Handle file upload with EXIF orientation
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
       const photoData = URL.createObjectURL(file);
       setPhoto(photoData);
       setStep('preview');
+
+      EXIF.getData(file, function () {
+        const orientation = EXIF.getTag(this, 'Orientation');
+        let rotation = 0;
+        switch (orientation) {
+          case 3:
+            rotation = 180;
+            break;
+          case 6:
+            rotation = 90;
+            break;
+          case 8:
+            rotation = -90;
+            break;
+          default:
+            rotation = 0;
+            break;
+        }
+        setImageRotation(rotation);
+      });
     }
   };
 
   // Export the design
   const exportDesign = () => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const link = document.createElement('a');
     link.download = 'patio-cover-design.png';
-    link.href = canvas.toDataURL('image/png');
+    link.href = canvas.toDataURL('image/png', 1.0);
     link.click();
   };
 
   // Handle panning
   const handleMouseDown = (e) => {
-    if (zoom <= 1 && backgroundZoom <= 1) return; // Only allow panning if zoomed in
+    if (zoom <= 1 && backgroundZoom <= 1) return;
     setIsDragging(true);
     setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
@@ -170,17 +212,17 @@ const startCamera = async () => {
     const newPanX = e.clientX - dragStart.x;
     const newPanY = e.clientY - dragStart.y;
 
-    // Calculate boundaries to prevent panning too far
     const container = imageContainerRef.current;
     if (container) {
       const img = container.querySelector('img');
+      if (!img) return;
       const containerWidth = container.offsetWidth;
       const containerHeight = container.offsetHeight;
-      const imgWidth = img.offsetWidth * zoom * backgroundZoom;
-      const imgHeight = img.offsetHeight * zoom * backgroundZoom;
+      const imgWidth = img.naturalWidth * zoom * backgroundZoom;
+      const imgHeight = img.naturalHeight * zoom * backgroundZoom;
 
-      const maxPanX = (imgWidth - containerWidth) / 2 / (zoom * backgroundZoom);
-      const maxPanY = (imgHeight - containerHeight) / 2 / (zoom * backgroundZoom);
+      const maxPanX = Math.max(0, (imgWidth - containerWidth) / 2 / (zoom * backgroundZoom));
+      const maxPanY = Math.max(0, (imgHeight - containerHeight) / 2 / (zoom * backgroundZoom));
 
       const boundedPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
       const boundedPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
@@ -217,9 +259,19 @@ const startCamera = async () => {
           <div className="camera-feed">
             <video ref={videoRef} autoPlay playsInline />
           </div>
-          <button onClick={capturePhoto}>Capture Photo</button>
+          <button onClick={capturePhoto} aria-label="Capture a photo from the camera">
+            Capture Photo
+          </button>
+          <button onClick={startCamera} aria-label="Retry camera access">
+            Retry Camera
+          </button>
           <p>Or upload a photo:</p>
-          <input type="file" accept="image/*" onChange={handleFileUpload} />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            aria-label="Upload a photo"
+          />
         </div>
       )}
 
@@ -243,7 +295,7 @@ const startCamera = async () => {
                 alt="House"
                 className="background-photo"
                 style={{
-                  transform: `scale(${backgroundZoom})`,
+                  transform: `scale(${backgroundZoom}) rotate(${imageRotation}deg)`,
                   transformOrigin: 'center center',
                 }}
               />
@@ -256,16 +308,7 @@ const startCamera = async () => {
                 >
                   <ambientLight intensity={0.5} />
                   <directionalLight position={[10, 10, 5]} intensity={1} />
-                  {selectedModel && (
-                    <PatioCover
-                      modelPath={selectedModel}
-                      position={patioPosition}
-                      rotationX={rotationX}
-                      rotationY={rotationY}
-                      scale={scale}
-                      color={color}
-                    />
-                  )}
+                  {selectedModel && <PatioCover {...patioProps} />}
                   <OrbitControls enableRotate={false} enableZoom={false} enablePan={false} />
                 </Canvas>
               </div>
@@ -275,31 +318,71 @@ const startCamera = async () => {
             <h3>Adjust Photo View</h3>
             <label>
               Zoom (Image + Model):
-              <input
-                type="range"
-                min="1"
-                max="3"
-                step="0.1"
-                value={zoom}
-                onChange={(e) => {
-                  setZoom(parseFloat(e.target.value));
-                  setPan({ x: 0, y: 0 }); // Reset pan when zooming
-                }}
-              />
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={(e) => {
+                    setZoom(parseFloat(e.target.value));
+                    setPan({ x: 0, y: 0 });
+                  }}
+                  className="custom-slider"
+                  aria-label="Adjust zoom for image and model"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= 1 && value <= 3) {
+                      setZoom(value);
+                      setPan({ x: 0, y: 0 });
+                    }
+                  }}
+                  className="number-input"
+                  aria-label="Enter zoom value for image and model"
+                />
+              </div>
             </label>
             <label>
               Background Zoom (Image Only):
-              <input
-                type="range"
-                min="1"
-                max="3"
-                step="0.1"
-                value={backgroundZoom}
-                onChange={(e) => {
-                  setBackgroundZoom(parseFloat(e.target.value));
-                  setPan({ x: 0, y: 0 }); // Reset pan when zooming
-                }}
-              />
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={backgroundZoom}
+                  onChange={(e) => {
+                    setBackgroundZoom(parseFloat(e.target.value));
+                    setPan({ x: 0, y: 0 });
+                  }}
+                  className="custom-slider"
+                  aria-label="Adjust zoom for background image"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={backgroundZoom}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= 1 && value <= 3) {
+                      setBackgroundZoom(value);
+                      setPan({ x: 0, y: 0 });
+                    }
+                  }}
+                  className="number-input"
+                  aria-label="Enter zoom value for background image"
+                />
+              </div>
             </label>
             <h3>Adjust Patio Cover</h3>
             <label>
@@ -307,6 +390,7 @@ const startCamera = async () => {
               <select
                 value={selectedModel || ''}
                 onChange={(e) => setSelectedModel(e.target.value)}
+                aria-label="Select a patio cover model"
               >
                 {modelOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -317,100 +401,211 @@ const startCamera = async () => {
             </label>
             <label>
               X Position:
-              <input
-                type="range"
-                min="-10"
-                max="10"
-                step="0.1"
-                value={patioPosition[0]}
-                onChange={(e) =>
-                  setPatioPosition([
-                    parseFloat(e.target.value),
-                    patioPosition[1],
-                    patioPosition[2],
-                  ])
-                }
-              />
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="-10"
+                  max="10"
+                  step="0.1"
+                  value={patioPosition[0]}
+                  onChange={(e) =>
+                    setPatioPosition([
+                      parseFloat(e.target.value),
+                      patioPosition[1],
+                      patioPosition[2],
+                    ])
+                  }
+                  className="custom-slider"
+                  aria-label="Adjust X position of the patio cover"
+                />
+                <input
+                  type="number"
+                  min="-10"
+                  max="10"
+                  step="0.1"
+                  value={patioPosition[0]}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= -10 && value <= 10) {
+                      setPatioPosition([value, patioPosition[1], patioPosition[2]]);
+                    }
+                  }}
+                  className="number-input"
+                  aria-label="Enter X position of the patio cover"
+                />
+              </div>
             </label>
             <label>
               Y Position:
-              <input
-                type="range"
-                min="-10"
-                max="10"
-                step="0.1"
-                value={patioPosition[1]}
-                onChange={(e) =>
-                  setPatioPosition([
-                    patioPosition[0],
-                    parseFloat(e.target.value),
-                    patioPosition[2],
-                  ])
-                }
-              />
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="-10"
+                  max="10"
+                  step="0.1"
+                  value={patioPosition[1]}
+                  onChange={(e) =>
+                    setPatioPosition([
+                      patioPosition[0],
+                      parseFloat(e.target.value),
+                      patioPosition[2],
+                    ])
+                  }
+                  className="custom-slider"
+                  aria-label="Adjust Y position of the patio cover"
+                />
+                <input
+                  type="number"
+                  min="-10"
+                  max="10"
+                  step="0.1"
+                  value={patioPosition[1]}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= -10 && value <= 10) {
+                      setPatioPosition([patioPosition[0], value, patioPosition[2]]);
+                    }
+                  }}
+                  className="number-input"
+                  aria-label="Enter Y position of the patio cover"
+                />
+              </div>
             </label>
             <label>
               Z Position (Depth):
-              <input
-                type="range"
-                min="-5"
-                max="5"
-                step="0.1"
-                value={patioPosition[2]}
-                onChange={(e) =>
-                  setPatioPosition([
-                    patioPosition[0],
-                    patioPosition[1],
-                    parseFloat(e.target.value),
-                  ])
-                }
-              />
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="-5"
+                  max="5"
+                  step="0.1"
+                  value={patioPosition[2]}
+                  onChange={(e) =>
+                    setPatioPosition([
+                      patioPosition[0],
+                      patioPosition[1],
+                      parseFloat(e.target.value),
+                    ])
+                  }
+                  className="custom-slider"
+                  aria-label="Adjust Z position of the patio cover"
+                />
+                <input
+                  type="number"
+                  min="-5"
+                  max="5"
+                  step="0.1"
+                  value={patioPosition[2]}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= -5 && value <= 5) {
+                      setPatioPosition([patioPosition[0], patioPosition[1], value]);
+                    }
+                  }}
+                  className="number-input"
+                  aria-label="Enter Z position of the patio cover"
+                />
+              </div>
             </label>
             <label>
               Rotate X:
-              <input
-                type="range"
-                min="0"
-                max="6.28"
-                step="0.1"
-                value={rotationX}
-                onChange={(e) => setRotationX(parseFloat(e.target.value))}
-              />
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="0"
+                  max="6.28"
+                  step="0.1"
+                  value={rotationX}
+                  onChange={(e) => setRotationX(parseFloat(e.target.value))}
+                  className="custom-slider"
+                  aria-label="Adjust X rotation of the patio cover"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="6.28"
+                  step="0.1"
+                  value={rotationX}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= 0 && value <= 6.28) {
+                      setRotationX(value);
+                    }
+                  }}
+                  className="number-input"
+                  aria-label="Enter X rotation of the patio cover"
+                />
+              </div>
             </label>
             <label>
               Rotate Y:
-              <input
-                type="range"
-                min="0"
-                max="6.28"
-                step="0.1"
-                value={rotationY}
-                onChange={(e) => setRotationY(parseFloat(e.target.value))}
-              />
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="0"
+                  max="6.28"
+                  step="0.1"
+                  value={rotationY}
+                  onChange={(e) => setRotationY(parseFloat(e.target.value))}
+                  className="custom-slider"
+                  aria-label="Adjust Y rotation of the patio cover"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="6.28"
+                  step="0.1"
+                  value={rotationY}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= 0 && value <= 6.28) {
+                      setRotationY(value);
+                    }
+                  }}
+                  className="number-input"
+                  aria-label="Enter Y rotation of the patio cover"
+                />
+              </div>
             </label>
             <label>
-              Scale:git
-              <input
-                type="range"
-                min="0.5"
-                max="2"
-                step="0.1"
-                value={scale}
-                onChange={(e) => setScale(parseFloat(e.target.value))}
-              />
+              Scale:
+              <div className="slider-container">
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.1"
+                  value={scale}
+                  onChange={(e) => setScale(parseFloat(e.target.value))}
+                  className="custom-slider"
+                  aria-label="Adjust scale of the patio cover"
+                />
+                <input
+                  type="number"
+                  min="0.5"
+                  max="2"
+                  step="0.1"
+                  value={scale}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value) && value >= 0.5 && value <= 2) {
+                      setScale(value);
+                    }
+                  }}
+                  className="number-input"
+                  aria-label="Enter scale of the patio cover"
+                />
+              </div>
             </label>
-            <label>
-              Color:
-              <select value={color} onChange={(e) => setColor(e.target.value)}>
-                <option value="brown">Brown</option>
-                <option value="gray">Gray</option>
-                <option value="white">White</option>
-              </select>
-            </label>
-            <button onClick={() => setPatioPosition([0, 0, 0])}>
+            <button
+              onClick={() => setPatioPosition([0, 0, 0])}
+              aria-label="Reset patio cover position"
+            >
               Reset Position
             </button>
-            <button onClick={exportDesign}>Export Design</button>
+            <button onClick={exportDesign} aria-label="Export patio cover design as image">
+              Export Design
+            </button>
           </div>
         </div>
       )}

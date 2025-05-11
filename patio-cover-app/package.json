@@ -9,14 +9,14 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "serve dist -s"
-
   },
-  "engines":{
-    "node" : "22.15.0"
+  "engines": {
+    "node": "22.15.0"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.7",
     "@react-three/fiber": "^9.1.2",
+    "exif-js": "^2.3.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "serve": "^14.2.4",
